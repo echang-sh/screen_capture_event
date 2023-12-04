@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.WindowManager;
 import android.webkit.MimeTypeMap;
+import android.app.Activity;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -40,7 +41,7 @@ public class ScreenCaptureEventPlugin implements FlutterPlugin, MethodCallHandle
     private FileObserver fileObserver;
     private Timer timeout = new Timer();
     private final Map<String, FileObserver> watchModifier = new HashMap<>();
-    private ActivityPluginBinding activityPluginBinding;
+    private Activity activity;
     private Handler handler;
     private boolean screenRecording = false;
     private long tempSize = 0;
@@ -57,18 +58,20 @@ public class ScreenCaptureEventPlugin implements FlutterPlugin, MethodCallHandle
     public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
         switch (call.method) {
             case "prevent_screenshot":
-                if ((boolean) call.arguments) {
-                    activityPluginBinding.getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-                } else {
-                    activityPluginBinding.getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                if (activity != null) {
+                    if ((boolean) call.arguments) {
+                        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                    } else {
+                        activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                    }
                 }
                 break;
             case "isRecording":
                 result.success(screenRecording);
                 break;
             case "request_permission":
-                if (ContextCompat.checkSelfPermission(activityPluginBinding.getActivity(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(activityPluginBinding.getActivity(), new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 101);
+                if (activity != null && ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 101);
                 }
                 break;
             case "watch":
@@ -246,23 +249,22 @@ public class ScreenCaptureEventPlugin implements FlutterPlugin, MethodCallHandle
 
     @Override
     public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
-        activityPluginBinding = binding;
-
+        activity = binding.getActivity();
     }
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
-
+        activity = null;
     }
 
     @Override
     public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
-
+        activity = binding.getActivity();
     }
 
     @Override
     public void onDetachedFromActivity() {
-
+        activity = null;
     }
 
     public enum Path {
